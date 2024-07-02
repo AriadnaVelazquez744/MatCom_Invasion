@@ -5,7 +5,7 @@
 #include <X11/Xutil.h>
 #include <X11/Xos.h>
 
-#define WIDTH 800
+#define WIDTH 800 
 #define HEIGHT 600
 
 typedef struct {
