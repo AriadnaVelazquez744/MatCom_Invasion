@@ -62,6 +62,7 @@ void checkCollisions() {
     for (int j = 0; j < MAX_ENEMIES; ++j) {
         if (enemiesToRemove[j]) {
             enemies[j].active = 0;
+            resources.active_enemies--;
         }
     }
 }

@@ -13,6 +13,12 @@ typedef enum {
     GAME_RESTART
 } GameState;
 
+typedef enum{
+    LEVEL_1,
+    LEVEL_2,
+    LEVEL_3
+}LEVEL;
+
 struct XResources {
     Display *display;
     Window window;
@@ -26,6 +32,9 @@ struct XResources {
     unsigned int WIDTH; 
     unsigned int HEIGHT;
     GameState game_state; 
+    LEVEL current_level;
+    int remaining_enemies;
+    int active_enemies;
 };
 
 extern struct XResources resources;

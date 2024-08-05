@@ -8,6 +8,9 @@
 #include "Game_Logic/Projectiles/projectile.h"
 #include "Game_Logic/Aliens/enemy.h"
 
+#define ENEMY_GENERATION_INTERVAL 2  // Intervalo para generar enemigos (5 segundos)
+
+
 
 void resetGame() {
     // Reiniciar los recursos del juego
@@ -19,6 +22,7 @@ void resetGame() {
         resources.projectiles[i].active = 0;
     }
     resources.game_state = GAME_RUNNING;
+    resources.current_level=LEVEL_1;
     resources.should_draw = 1;
     pthread_mutex_unlock(&resources.mutex);
 }
@@ -78,10 +82,29 @@ void *mouseControl(void *arg) {
     return NULL;
 }
 
+void *enemyGenerationLoop(void *arg) {
+    struct timespec ts;
+    ts.tv_sec = ENEMY_GENERATION_INTERVAL;// Intervalo para generar enemigos
+    ts.tv_nsec = 0; 
+
+    while (1) {
+        nanosleep(&ts, NULL);
+        if (resources.game_state == GAME_RUNNING) {
+            pthread_mutex_lock(&resources.mutex);
+            generateEnemy();
+            resources.should_draw = 1;
+            pthread_mutex_unlock(&resources.mutex);
+            pthread_cond_signal(&resources.cond);
+        }
+    }
+    return NULL;
+}
+
 int main() {
     initXResources();
+    srand(time(NULL));
 
-    pthread_t mouseThread, drawThread;
+    pthread_t mouseThread, drawThread, enemyGenerationThread;
     if (pthread_create(&mouseThread, NULL, mouseControl, NULL) != 0) {
         fprintf(stderr, "Error al crear el hilo para control del ratón.\n");
         cleanupXResources();
@@ -96,8 +119,19 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    if (pthread_create(&enemyGenerationThread, NULL, enemyGenerationLoop, NULL) != 0) {
+        fprintf(stderr, "Error al crear el hilo para generación de enemigos.\n");
+        pthread_cancel(mouseThread);
+        pthread_cancel(drawThread);
+        pthread_join(mouseThread, NULL);
+        pthread_join(drawThread, NULL);
+        cleanupXResources();
+        return EXIT_FAILURE;
+    }
+
     pthread_join(mouseThread, NULL);
     pthread_join(drawThread, NULL);
+     pthread_join(enemyGenerationThread, NULL);
 
     cleanupXResources();
     return EXIT_SUCCESS;
