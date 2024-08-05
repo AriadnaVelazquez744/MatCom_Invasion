@@ -40,10 +40,21 @@ void drawEnemies() {
     for (int i = 0; i < MAX_ENEMIES; ++i) {
         if (enemies[i].active) {
             XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x - 10, enemies[i].y - 10, 20, 20);
-            XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
+            if (enemies[i].type==ENEMY_TYPE_1)
+            {
+               XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
             XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x - 5, enemies[i].y - 5, 4, 4);
             XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x + 1, enemies[i].y - 5, 4, 4);
             XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+            }
+            else if (enemies[i].type==ENEMY_TYPE_2)
+            {
+                 XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
+            XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x - 5, enemies[i].y - 5, 4, 4);
+            XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+            }
+            
+            
         }
     }
 }
@@ -86,6 +97,41 @@ void drawGameOver() {
     // Liberar la fuente cargada
     if (font) {
         XFreeFont(resources.display, font);
+        XClearWindow(resources.display, resources.window);
+    const char* message = "Game Over";
+    }
+
+    XFlush(resources.display);
+}
+
+void drawWinnLevelOne(){//Por ahora no funciona,sistema desactivado por ahora
+    XClearWindow(resources.display, resources.window);
+    const char* message = "YOU HAVE PASSED LEVEL 1";
+    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+
+    // Cargar fuente 
+    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
+    if (!font) {
+        // Si no se puede cargar la fuente, usar una fuente predeterminada
+        fprintf(stderr, "No se pudo cargar la fuente grande, usando la fuente predeterminada.\n");
+        font = XLoadQueryFont(resources.display, "fixed");
+        if (!font) {
+            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
+            return; // Salir si no se puede cargar ninguna fuente
+        }
+    }
+
+    XSetFont(resources.display, resources.gc, font->fid);
+
+    // Dibujar el mensaje de victoria en el centro de la pantalla
+    int text_width = XTextWidth(font, message, strlen(message));
+    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 20, message, strlen(message));
+    
+    // Liberar la fuente cargada
+    if (font) {
+        XFreeFont(resources.display, font);
+        XClearWindow(resources.display, resources.window);
+    const char* message = "Game Over";
     }
 
     XFlush(resources.display);
@@ -115,6 +161,17 @@ void *drawLoop(void *arg) {
             XFlush(resources.display);
 
             nanosleep(&ts, NULL); 
+            // if (resources.remaining_enemies<=0 && resources.active_enemies==0)
+            // {
+            //     if (resources.current_level==LEVEL_1)
+            //     {
+            //         drawWinnLevelOne();
+            //         resources.current_level=LEVEL_2;
+                    
+            //     }
+                
+            // }
+            
         }
     }
     return NULL;

@@ -18,6 +18,7 @@ void initXResources() {
     resources.screen = DefaultScreen(resources.display);
     resources.WIDTH = DisplayWidth(resources.display, resources.screen);
     resources.HEIGHT = DisplayHeight(resources.display, resources.screen);
+    resources.current_level=LEVEL_1;
 
     resources.window = XCreateSimpleWindow(resources.display, RootWindow(resources.display, resources.screen), 0, 0, resources.WIDTH, resources.HEIGHT, 1,
                                            BlackPixel(resources.display, resources.screen), WhitePixel(resources.display, resources.screen));
