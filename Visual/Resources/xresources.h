@@ -7,18 +7,22 @@
 #include "../../Game_Logic/Projectiles/projectile.h"
 #include "../../Game_Logic/Aliens/enemy.h"
 
+//Estados del juego
 typedef enum {
     GAME_RUNNING,
     GAME_OVER,
-    GAME_RESTART
+    GAME_WIN_LEVEL,
+    GAME_WIN
 } GameState;
 
+//Niveles
 typedef enum{
     LEVEL_1,
     LEVEL_2,
     LEVEL_3
 }LEVEL;
 
+//Recursos del juego
 struct XResources {
     Display *display;
     Window window;
@@ -33,8 +37,9 @@ struct XResources {
     unsigned int HEIGHT;
     GameState game_state; 
     LEVEL current_level;
+    int max_enemies;
     int remaining_enemies;
-    int active_enemies;
+    int destroyed_enemies;
 };
 
 extern struct XResources resources;

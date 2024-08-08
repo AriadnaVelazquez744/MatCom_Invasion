@@ -1,14 +1,15 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 
-#define MAX_ENEMIES 4
+#define MAX_ENEMIES 10 //Máximo de enemigos entre los límites de todos los niveles
 
+//Tipos de aliens
 typedef enum {
     ENEMY_TYPE_1,
     ENEMY_TYPE_2,
 } EnemyType;
 
-
+//Propiedades de los aliens
 typedef struct {
     int x;
     int y;

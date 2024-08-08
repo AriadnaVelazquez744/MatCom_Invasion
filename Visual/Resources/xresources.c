@@ -7,7 +7,7 @@
 struct XResources resources;
 unsigned long orange_pixel;
 
-
+//Inicializa la pantalla y las características iniciales del juego
 void initXResources() {
     XInitThreads();
     resources.display = XOpenDisplay(NULL);
@@ -19,6 +19,7 @@ void initXResources() {
     resources.WIDTH = DisplayWidth(resources.display, resources.screen);
     resources.HEIGHT = DisplayHeight(resources.display, resources.screen);
     resources.current_level=LEVEL_1;
+    resources.max_enemies=4;
 
     resources.window = XCreateSimpleWindow(resources.display, RootWindow(resources.display, resources.screen), 0, 0, resources.WIDTH, resources.HEIGHT, 1,
                                            BlackPixel(resources.display, resources.screen), WhitePixel(resources.display, resources.screen));
