@@ -9,11 +9,19 @@
 
 //Estados del juego
 typedef enum {
+     GAME_SELECT_MODE,
     GAME_RUNNING,
     GAME_OVER,
     GAME_WIN_LEVEL,
     GAME_WIN
 } GameState;
+
+//Modos de Juego
+typedef enum {
+    MODE_PROGRESSIVE,  // Primero tipo 1, luego tipo 2
+    MODE_ALTERNATE,    // Alterna entre tipo 1 y tipo 2
+    MODE_RANDOM        // Genera enemigos de tipo aleatorio
+} GameMode;
 
 //Niveles
 typedef enum{
@@ -40,6 +48,8 @@ struct XResources {
     int max_enemies;
     int remaining_enemies;
     int destroyed_enemies;
+    GameMode game_mode;
+    Pixmap buffer;
 };
 
 extern struct XResources resources;

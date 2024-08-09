@@ -24,7 +24,8 @@ void resetGame()
     {
         resources.projectiles[i].active = 0;
     }
-    resources.game_state = GAME_RUNNING;
+    //resources.game_state = GAME_RUNNING;
+    resources.game_state = GAME_SELECT_MODE;
     resources.should_draw = 1;
     pthread_mutex_unlock(&resources.mutex);
 }
@@ -57,7 +58,26 @@ void *mouseControl(void *arg)
     while (1)
     {
         XNextEvent(resources.display, &event);
-        if (resources.game_state == GAME_RUNNING)
+        if (resources.game_state == GAME_SELECT_MODE) {
+            if (event.type == ButtonPress && event.xbutton.button == 1) {  // Clic izquierdo
+                int click_x = event.xbutton.x;
+                int click_y = event.xbutton.y;
+
+                if (click_y >= resources.HEIGHT / 2 - 20 && click_y < resources.HEIGHT / 2 + 20) {
+                    resources.game_mode = MODE_PROGRESSIVE;
+                    resetGame();
+                    resources.game_state = GAME_RUNNING;
+                } else if (click_y >= resources.HEIGHT / 2 + 20 && click_y < resources.HEIGHT / 2 + 60) {
+                    resources.game_mode = MODE_ALTERNATE;
+                    resetGame();
+                    resources.game_state = GAME_RUNNING;
+                } else if (click_y >= resources.HEIGHT / 2 + 60 && click_y < resources.HEIGHT / 2 + 100) {
+                    resources.game_mode = MODE_RANDOM;
+                    resetGame();
+                    resources.game_state = GAME_RUNNING;
+                }
+            }
+        }else if (resources.game_state == GAME_RUNNING)
         {
             if (event.type == MotionNotify)
             {
@@ -178,6 +198,7 @@ void *enemyGenerationLoop(void *arg)
 int main()
 {
     initXResources();
+    resources.game_state = GAME_SELECT_MODE;
     srand(time(NULL));
 
     pthread_t mouseThread, drawThread, enemyGenerationThread;

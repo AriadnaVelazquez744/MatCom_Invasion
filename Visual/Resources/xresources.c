@@ -51,6 +51,12 @@ void initXResources() {
         exit(EXIT_FAILURE);
     }
 
+    resources.buffer = XCreatePixmap(resources.display, resources.window, resources.WIDTH, resources.HEIGHT, DefaultDepth(resources.display, resources.screen));
+    if (!resources.buffer) {
+        fprintf(stderr, "Error al crear el Pixmap.\n");
+        exit(EXIT_FAILURE);
+    }
+
     pthread_mutex_init(&resources.mutex, NULL);
     pthread_cond_init(&resources.cond, NULL);
     resources.should_draw = 0;
@@ -65,6 +71,7 @@ void initXResources() {
 void cleanupXResources() {
     pthread_mutex_destroy(&resources.mutex);
     pthread_cond_destroy(&resources.cond);
+    XFreePixmap(resources.display, resources.buffer);
     XFreeGC(resources.display, resources.gc);
     XDestroyWindow(resources.display, resources.window);
     XCloseDisplay(resources.display);

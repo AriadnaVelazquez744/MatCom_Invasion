@@ -56,6 +56,7 @@ void alternateSort(Enemy enemies[]) {
 
 void initEnemies()
 {
+
     //Limita la cantidad de enemigos de tipo 2 que se pueden generar en cada nivel
     int max_remaining_type2_level2=6;
     int max_remaining_type2_level3=11;
@@ -116,13 +117,29 @@ void initEnemies()
                     enemies[i].life = 3;
             }
         }
+        if (resources.max_enemies<MAX_ENEMIES)
+        {
+            for (int j = resources.max_enemies; j <MAX_ENEMIES ; ++j)
+            {
+                enemies[j].active = 0;
+            }
+            
+        }
         
         
         
         
     }
-    //Por ahora política de salida de los aliens SJF(proximamente se agregaran opciones)
-    qsort(enemies, resources.max_enemies, sizeof(Enemy), compare);
+    if (resources.game_mode==MODE_PROGRESSIVE)
+    {
+       //Política SJF
+       qsort(enemies, resources.max_enemies, sizeof(Enemy), compare);
+    }
+    else if (resources.game_mode==MODE_ALTERNATE)//Round Robin(comprobar)
+    {
+        alternateSort(enemies);
+    }
+    //Modo Random es simplemente no ordenar el array generado(FIFO)
     //Se inicializan los contadores para determinar victoria en el nivel
     resources.remaining_enemies=resources.max_enemies;
     resources.destroyed_enemies=0;
