@@ -3,6 +3,7 @@
 
 #define MAX_PROJECTILES 15
 
+//Propiedades de los proyectiles
 typedef struct {
     int x;
     int y;
