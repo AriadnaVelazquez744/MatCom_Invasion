@@ -6,320 +6,375 @@
 #include <stdio.h>
 #include <string.h> 
 
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h> // Incluimos TTF para manejar texto
+#include <X11/Xlib.h>
+
+
 extern struct XResources resources;
 extern unsigned long orange_pixel;
+
+SDL_Window* sdl_window = NULL;
+SDL_Renderer* sdl_renderer = NULL;
+SDL_Texture* background_texture = NULL;
+TTF_Font* font = NULL; // Fuente para texto
+
+SDL_Texture* game_running_texture = NULL;
+SDL_Texture* select_screen = NULL;
+SDL_Texture* ship = NULL;
+SDL_Texture* creature_T1 = NULL;
+SDL_Texture* creature_T2 = NULL;
+
+
+void init_sdl_for_background() 
+{
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) 
+    {
+        fprintf(stderr, "SDL no pudo inicializarse. SDL_Error: %s\n", SDL_GetError());
+        return;
+    }
+
+    if (TTF_Init() == -1) 
+    {
+        fprintf(stderr, "SDL_ttf no pudo inicializarse. TTF_Error: %s\n", TTF_GetError());
+        SDL_Quit();
+        return;
+    }
+
+    // Crear una ventana SDL usando el mismo tamaño de la ventana X11
+    sdl_window = SDL_CreateWindowFrom((void*)resources.window);
+    if (sdl_window == NULL) 
+    {
+        fprintf(stderr, "La ventana SDL no pudo ser creada. SDL_Error: %s\n", SDL_GetError());
+        SDL_Quit();
+        return;
+    }
+
+    sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (sdl_renderer == NULL) 
+    {
+        fprintf(stderr, "El renderer SDL no pudo ser creado. SDL_Error: %s\n", SDL_GetError());
+        SDL_DestroyWindow(sdl_window);
+        SDL_Quit();
+        return;
+    }
+
+    // Cargar fuente
+    font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", 32);
+    
+    if (!font) 
+    {
+        fprintf(stderr, "No se pudo cargar la fuente. TTF_Error: %s\n", TTF_GetError());
+        SDL_DestroyTexture(background_texture);
+        SDL_DestroyRenderer(sdl_renderer);
+        SDL_DestroyWindow(sdl_window);
+        SDL_Quit();
+        return;
+    }
+}
+
+void cleanup_sdl() 
+{
+    if (font) 
+    {
+        TTF_CloseFont(font);
+    }
+    if (background_texture) 
+    {
+        SDL_DestroyTexture(background_texture);
+    }
+    if (sdl_renderer) 
+    {
+        SDL_DestroyRenderer(sdl_renderer);
+    }
+    if (sdl_window) 
+    {
+        SDL_DestroyWindow(sdl_window);
+    }
+    TTF_Quit();
+    SDL_Quit();
+}
+
+void load_textures() 
+{
+    // Cargar la textura para GAME_RUNNING
+    SDL_Surface* loaded_surface = IMG_Load("galaxy.jpeg");
+    game_running_texture = SDL_CreateTextureFromSurface(sdl_renderer, loaded_surface);
+    SDL_FreeSurface(loaded_surface);
+    
+    // Cargar texturas para otros estados
+    loaded_surface = IMG_Load("night_sky.png");
+    select_screen = SDL_CreateTextureFromSurface(sdl_renderer, loaded_surface);
+    SDL_FreeSurface(loaded_surface);
+
+    // Cargar la textura para la nave
+    loaded_surface = IMG_Load("ship.png");
+    ship = SDL_CreateTextureFromSurface(sdl_renderer, loaded_surface);
+    SDL_FreeSurface(loaded_surface);
+
+    // Cargar texturas para los enemigos
+    loaded_surface = IMG_Load("creature_T1-sheet.png");
+    creature_T1 = SDL_CreateTextureFromSurface(sdl_renderer, loaded_surface);
+    SDL_FreeSurface(loaded_surface);
+
+    loaded_surface = IMG_Load("creature_T2-sheet.png");
+    creature_T2 = SDL_CreateTextureFromSurface(sdl_renderer, loaded_surface);
+    SDL_FreeSurface(loaded_surface);
+}
+
+
+void render_background(SDL_Texture* texture) 
+{
+    if (sdl_renderer && texture) {
+        SDL_RenderClear(sdl_renderer);
+        SDL_RenderCopy(sdl_renderer, texture, NULL, NULL);
+    }
+}
+
+void drawText(SDL_Renderer* renderer, TTF_Font* font, const char* text, int x, int y, SDL_Color textColor, SDL_Color outlineColor) 
+{
+    // Crear el contorno
+    TTF_SetFontOutline(font, 2); // Grosor del contorno
+    SDL_Surface* outlineSurface = TTF_RenderText_Solid(font, text, outlineColor);
+    SDL_Texture* outlineTexture = SDL_CreateTextureFromSurface(renderer, outlineSurface);
+
+    // Renderizar contorno
+    SDL_Rect outlineQuad = {x - 2, y - 2, outlineSurface->w, outlineSurface->h};
+    SDL_RenderCopy(renderer, outlineTexture, NULL, &outlineQuad);
+
+    // Crear el texto
+    TTF_SetFontOutline(font, 0); // Desactivar contorno
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, text, textColor);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+
+    // Renderizar texto
+    SDL_Rect textQuad = {x, y, textSurface->w, textSurface->h};
+    SDL_RenderCopy(renderer, textTexture, NULL, &textQuad);
+
+    SDL_FreeSurface(outlineSurface);
+    SDL_DestroyTexture(outlineTexture);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+}
+
 //Dibujo de la nave
-void drawShip() {
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
-    XClearWindow(resources.display, resources.window);
-
+void drawShip() 
+{
     ShipPosition shipPos = getShipPosition();
-    XFillRectangle(resources.display, resources.window, resources.gc, shipPos.x - 30, shipPos.y - 7, 60, 14);
-    XFillRectangle(resources.display, resources.window, resources.gc, shipPos.x - 22, shipPos.y + 7, 15, 7);
-    XFillRectangle(resources.display, resources.window, resources.gc, shipPos.x + 10, shipPos.y + 7, 15, 7);
-    XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
-    XFillRectangle(resources.display, resources.window, resources.gc, shipPos.x - 7, shipPos.y - 7, 14, 7);
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
-    XFillRectangle(resources.display, resources.window, resources.gc, shipPos.x - 3, shipPos.y - 22, 6, 14);
+    
+    // Crear rectángulo donde se va a renderizar la textura de la nave
+    //SDL_Rect ship_rect = {shipPos.x - 30, shipPos.y - 22, 60, 44};
+
+    // Ampliar el tamaño de la nave y mantener el centro
+    SDL_Rect ship_rect = {shipPos.x - 40, shipPos.y - 30, 80, 60};  // Aumentado
+
+
+    // Dibujar la textura de la nave
+    SDL_RenderCopy(sdl_renderer, ship, NULL, &ship_rect);
 }
+
 //Dibujo de los disparos efectuados
-void drawProjectiles() {
-    XSetForeground(resources.display, resources.gc, orange_pixel);
+void drawProjectiles() 
+{    
+    SDL_SetRenderDrawColor(sdl_renderer, 255, 69, 0, 255);  // Rojo Naranja brillante para proyectiles
     Projectile *projectiles = getProjectiles();
-    for (int i = 0; i < MAX_PROJECTILES; ++i) {
-        if (projectiles[i].active) {
-            XFillRectangle(resources.display, resources.window, resources.gc,
-                           projectiles[i].x - 3, projectiles[i].y - 10, 6, 10);
+    for (int i = 0; i < MAX_PROJECTILES; ++i) 
+    {
+        if (projectiles[i].active) 
+        {
+            SDL_Rect projectile_rect = {projectiles[i].x - 3, projectiles[i].y - 10, 6, 10};
+            SDL_RenderFillRect(sdl_renderer, &projectile_rect);
         }
     }
 }
-//Dibujo de los aliens(mejorar estética)
-void drawEnemies() {
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+
+//Dibujo de los aliens
+void drawEnemies() 
+{
     Enemy *enemies = getEnemies();
-    for (int i = 0; i < MAX_ENEMIES; ++i) {
-        if (enemies[i].active) {
-            XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x - 10, enemies[i].y - 10, 20, 20);
-            if (enemies[i].type==ENEMY_TYPE_1)
+    static int frames[MAX_ENEMIES] = {0};  // Array local para almacenar el frame actual
+    static int frame_counters[MAX_ENEMIES] = {0};  // Contadores para cambiar frames
+
+
+    int frame_width_T1, frame_height_T1, frame_width_T2, frame_height_T2;
+
+    SDL_QueryTexture(creature_T1, NULL, NULL, &frame_width_T1, &frame_height_T1);
+    frame_width_T1 /= 4;  // Ya que el sheet tiene 4 cuadros de ancho
+    SDL_QueryTexture(creature_T2, NULL, NULL, &frame_width_T2, &frame_height_T2);
+    frame_width_T2 /= 4;  // Ya que el sheet tiene 4 cuadros de ancho
+
+    for (int i = 0; i < MAX_ENEMIES; ++i) 
+    {
+        if (enemies[i].active) 
+        {
+            SDL_Rect src_rect, dest_rect;
+
+            if (enemies[i].type == ENEMY_TYPE_1) 
             {
-               XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
-            XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x - 5, enemies[i].y - 5, 4, 4);
-            XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x + 1, enemies[i].y - 5, 4, 4);
-            XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
-            }
-            else if (enemies[i].type==ENEMY_TYPE_2)
+                src_rect = (SDL_Rect){frames[i] * frame_width_T1, 0, frame_width_T1, frame_height_T1};
+                dest_rect = (SDL_Rect){enemies[i].x - frame_width_T1 / 2, enemies[i].y - frame_height_T1 / 2, frame_width_T1 * 1.7, frame_height_T1 * 1.7};  // Aumentado
+
+                SDL_RenderCopy(sdl_renderer, creature_T1, &src_rect, &dest_rect);
+            } 
+            else if (enemies[i].type == ENEMY_TYPE_2) 
             {
-                 XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
-            XFillRectangle(resources.display, resources.window, resources.gc, enemies[i].x - 5, enemies[i].y - 5, 4, 4);
-            XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+                src_rect = (SDL_Rect){frames[i] * frame_width_T2, 0, frame_width_T2, frame_height_T2};
+                dest_rect = (SDL_Rect){enemies[i].x - frame_width_T2 / 2, enemies[i].y - frame_height_T2 / 2, frame_width_T2 * 1.8, frame_height_T2 * 1.8};  // Aumentado
+
+                SDL_RenderCopy(sdl_renderer, creature_T2, &src_rect, &dest_rect);
             }
             
-            
+            // Controlar el cambio de frame cada 10 ciclos
+            frame_counters[i]++;
+            if (frame_counters[i] >= 6) 
+            {
+                frames[i] = (frames[i] + 1) % 4; // Cambiar cuadro para la animación
+                frame_counters[i] = 0;
+            }        
         }
     }
 }
 
-//Pantalla de selección de modo de juego
-void drawSelectModeScreen() {
-    XSetForeground(resources.display, resources.gc, WhitePixel(resources.display, resources.screen));
-    XFillRectangle(resources.display, resources.buffer, resources.gc, 0, 0, resources.WIDTH, resources.HEIGHT);
+// Pantalla de selección de modo de juego
+void drawSelectModeScreen() 
+{
+    render_background(select_screen);
+    SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
+    SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
-    const char* message = "Select Game Mode:";
-    const char* mode1 = "1. Progressive";
-    const char* mode2 = "2. Alternate";
-    const char* mode3 = "3. Random";
+    drawText(sdl_renderer, font, "Select Game Mode:", resources.WIDTH / 2 - 100, resources.HEIGHT / 2 - 60, textColor, outlineColor);
+    drawText(sdl_renderer, font, "1. Progressive", resources.WIDTH / 2 - 80, resources.HEIGHT / 2 - 10, textColor, outlineColor);
+    drawText(sdl_renderer, font, "2. Alternate", resources.WIDTH / 2 - 80, resources.HEIGHT / 2 + 40, textColor, outlineColor);
+    drawText(sdl_renderer, font, "3. Random", resources.WIDTH / 2 - 80, resources.HEIGHT / 2 + 90, textColor, outlineColor);
 
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
-
-    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
-    if (!font) {
-        font = XLoadQueryFont(resources.display, "fixed");
-        if (!font) {
-            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
-            return;
-        }
-    }
-
-    XSetFont(resources.display, resources.gc, font->fid);
-
-    int text_width = XTextWidth(font, message, strlen(message));
-    XDrawString(resources.display, resources.buffer, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 60, message, strlen(message));
-
-    int mode1_width = XTextWidth(font, mode1, strlen(mode1));
-    XDrawString(resources.display, resources.buffer, resources.gc, (resources.WIDTH - mode1_width) / 2, resources.HEIGHT / 2 - 20, mode1, strlen(mode1));
-
-    int mode2_width = XTextWidth(font, mode2, strlen(mode2));
-    XDrawString(resources.display, resources.buffer, resources.gc, (resources.WIDTH- mode2_width) / 2, resources.HEIGHT / 2 + 20, mode2, strlen(mode2));
-
-    int mode3_width = XTextWidth(font, mode3, strlen(mode3));
-    XDrawString(resources.display, resources.buffer, resources.gc, (resources.WIDTH - mode3_width) / 2, resources.HEIGHT / 2 + 60, mode3, strlen(mode3));
-
-    XFreeFont(resources.display, font);
-
-    // Copia el contenido del buffer a la ventana
-    XCopyArea(resources.display, resources.buffer, resources.window, resources.gc, 0, 0, resources.WIDTH, resources.HEIGHT, 0, 0);
-    XFlush(resources.display);
+    SDL_RenderPresent(sdl_renderer);
 }
 
-//Pantalla Final(Game Over)
-void drawGameOver() {
-    XClearWindow(resources.display, resources.window);
-    const char* message = "Game Over";
-    const char* restart_message = "Restart";
+// Pantalla Final (Game Over)
+void drawGameOver() 
+{
+    render_background(select_screen);  // Usar la textura específica
+    SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
+    SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+    drawText(sdl_renderer, font, "Game Over", resources.WIDTH / 2 - 85, resources.HEIGHT / 2 - 20, textColor, outlineColor);
+    drawText(sdl_renderer, font, "Restart", resources.WIDTH / 2 - 60, resources.HEIGHT / 2 + 30, textColor, outlineColor);
 
-    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
-    if (!font) {
-        fprintf(stderr, "No se pudo cargar la fuente grande, usando la fuente predeterminada.\n");
-        font = XLoadQueryFont(resources.display, "fixed");
-        if (!font) {
-            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
-            return;
-        }
-    }
-
-    XSetFont(resources.display, resources.gc, font->fid);
-
-    int text_width = XTextWidth(font, message, strlen(message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 20, message, strlen(message));
-
-    int restart_text_width = XTextWidth(font, restart_message, strlen(restart_message));
-    int button_x = (resources.WIDTH - restart_text_width) / 2 - 10;
-    int button_y = resources.HEIGHT / 2 + 30;
-    int button_width = restart_text_width + 20;
-    int button_height = 30;
-
-    XDrawRectangle(resources.display, resources.window, resources.gc, button_x, button_y, button_width, button_height);
-    XDrawString(resources.display, resources.window, resources.gc, button_x + 10, button_y + 20, restart_message, strlen(restart_message));
-
-    XFreeFont(resources.display, font);
-    XFlush(resources.display);
+    SDL_RenderPresent(sdl_renderer);
 }
 
-//Pantalla del nivel 1(Victoria)
-void drawWinnLevelOne(){
-    XClearWindow(resources.display, resources.window);
-    const char* message = "You have passed Level 1!";
-    const char* restart_message = "Press Right-Click to start Level 2";
+// Pantalla de victoria del nivel 1
+void drawWinnLevelOne() 
+{
+    render_background(select_screen);  // Usar la textura específica
+    SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
+    SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+    drawText(sdl_renderer, font, "You have passed Level 1!", resources.WIDTH / 2 - 160, resources.HEIGHT / 2 - 20, textColor, outlineColor);
+    drawText(sdl_renderer, font, "Press Right-Click to start Level 2", resources.WIDTH / 2 - 225, resources.HEIGHT / 2 + 30, textColor, outlineColor);
 
-    // Cargar una fuente más grande
-    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
-    if (!font) {
-        font = XLoadQueryFont(resources.display, "fixed");
-        if (!font) {
-            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
-            return;
-        }
-    }
-
-    XSetFont(resources.display, resources.gc, font->fid);
-
-    // Dibujar el mensaje de victoria en el centro de la pantalla
-    int text_width = XTextWidth(font, message, strlen(message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 20, message, strlen(message));
-
-    // Dibujar el mensaje de pasar de nivel
-    int restart_text_width = XTextWidth(font, restart_message, strlen(restart_message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - restart_text_width) / 2, resources.HEIGHT / 2 + 20, restart_message, strlen(restart_message));
-
-    XFreeFont(resources.display, font);
-    XFlush(resources.display);
+    SDL_RenderPresent(sdl_renderer);
 }
 
-//Pantalla del nivel 2(Victoria)
-void drawWinnLevelTwo(){
-    XClearWindow(resources.display, resources.window);
-    const char* message = "You have passed Level 2!";
-    const char* restart_message = "Press Right-Click to start Level 3";
+// Pantalla de victoria del nivel 2
+void drawWinnLevelTwo() 
+{
+    render_background(select_screen);  // Usar la textura específica
+    SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
+    SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+    drawText(sdl_renderer, font, "You have passed Level 2!", resources.WIDTH / 2 - 160, resources.HEIGHT / 2 - 20, textColor, outlineColor);
+    drawText(sdl_renderer, font, "Press Right-Click to start Level 3", resources.WIDTH / 2 - 225, resources.HEIGHT / 2 + 30, textColor, outlineColor);
 
-    // Cargar una fuente más grande
-    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
-    if (!font) {
-        font = XLoadQueryFont(resources.display, "fixed");
-        if (!font) {
-            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
-            return;
-        }
-    }
-
-    XSetFont(resources.display, resources.gc, font->fid);
-
-    // Dibujar el mensaje de victoria en el centro de la pantalla
-    int text_width = XTextWidth(font, message, strlen(message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 20, message, strlen(message));
-
-    // Dibujar el mensaje de pasar de nivel
-    int restart_text_width = XTextWidth(font, restart_message, strlen(restart_message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - restart_text_width) / 2, resources.HEIGHT / 2 + 20, restart_message, strlen(restart_message));
-
-    XFreeFont(resources.display, font);
-    XFlush(resources.display);
+    SDL_RenderPresent(sdl_renderer);
 }
 
-//Pantalla del nivel 3(Victoria)
-void drawWinnLevelThree(){
-    XClearWindow(resources.display, resources.window);
-    const char* message = "You have passed Level 3!";
-    const char* restart_message = "Press Right-Click to complete Game";
+// Pantalla de victoria del nivel 3
+void drawWinnLevelThree() 
+{
+    render_background(select_screen);  // Usar la textura específica
+    SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
+    SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+    drawText(sdl_renderer, font, "You have passed Level 3!", resources.WIDTH / 2 - 160, resources.HEIGHT / 2 - 20, textColor, outlineColor);
+    drawText(sdl_renderer, font, "Press Right-Click to complete Game", resources.WIDTH / 2 - 225, resources.HEIGHT / 2 + 30, textColor, outlineColor);
 
-    // Cargar una fuente más grande
-    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
-    if (!font) {
-        font = XLoadQueryFont(resources.display, "fixed");
-        if (!font) {
-            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
-            return;
-        }
-    }
-
-    XSetFont(resources.display, resources.gc, font->fid);
-
-    // Dibujar el mensaje de victoria en el centro de la pantalla
-    int text_width = XTextWidth(font, message, strlen(message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 20, message, strlen(message));
-
-    // Dibujar el mensaje de finalizar juego
-    int restart_text_width = XTextWidth(font, restart_message, strlen(restart_message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - restart_text_width) / 2, resources.HEIGHT / 2 + 20, restart_message, strlen(restart_message));
-
-    XFreeFont(resources.display, font);
-    XFlush(resources.display);
+    SDL_RenderPresent(sdl_renderer);
 }
 
-void drawWinn(){
-    XClearWindow(resources.display, resources.window);
-    const char* message = "You Won";
-    const char* restart_message = "Press Right-Click to restart";
+// Pantalla de victoria final (You Won)
+void drawWinn() 
+{
+    render_background(select_screen);  // Usar la textura específica
+    SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
+    SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
-    XSetForeground(resources.display, resources.gc, BlackPixel(resources.display, resources.screen));
+    drawText(sdl_renderer, font, "You Won", resources.WIDTH / 2 - 60, resources.HEIGHT / 2 - 20, textColor, outlineColor);
+    drawText(sdl_renderer, font, "Press Right-Click to restart", resources.WIDTH / 2 - 210, resources.HEIGHT / 2 + 30, textColor, outlineColor);
 
-    // Cargar una fuente más grande
-    XFontStruct* font = XLoadQueryFont(resources.display, "12x24");
-    if (!font) {
-        font = XLoadQueryFont(resources.display, "fixed");
-        if (!font) {
-            fprintf(stderr, "No se pudo cargar la fuente predeterminada.\n");
-            return;
-        }
-    }
-
-    XSetFont(resources.display, resources.gc, font->fid);
-
-    // Dibujar el mensaje de victoria en el centro de la pantalla
-    int text_width = XTextWidth(font, message, strlen(message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - text_width) / 2, resources.HEIGHT / 2 - 20, message, strlen(message));
-
-    // Dibujar el mensaje de reinicio
-    int restart_text_width = XTextWidth(font, restart_message, strlen(restart_message));
-    XDrawString(resources.display, resources.window, resources.gc, (resources.WIDTH - restart_text_width) / 2, resources.HEIGHT / 2 + 20, restart_message, strlen(restart_message));
-
-    XFreeFont(resources.display, font);
-    XFlush(resources.display);
+    SDL_RenderPresent(sdl_renderer);
 }
 
 
-void *drawLoop(void *arg) {
+void *drawLoop(void *arg) 
+{
     struct timespec ts;
     ts.tv_sec = 0;
     ts.tv_nsec = 12000000L;
 
-    while (1) {
+    init_sdl_for_background(); // Inicializar SDL y cargar el fondo
+    load_textures(); // Cargar todas las texturas
 
-        if (resources.game_state == GAME_SELECT_MODE) {
+    while (1) 
+    {
+        // Dibujar las pantallas estáticas usando SDL
+        if (resources.game_state == GAME_SELECT_MODE) 
+        {
             drawSelectModeScreen();
-            nanosleep(&ts, NULL);
-        }else if (resources.game_state == GAME_OVER) {
+        } 
+        else if (resources.game_state == GAME_OVER) 
+        {
             drawGameOver();  
-            while (resources.game_state == GAME_OVER) {
-                nanosleep(&ts, NULL);
-            }
-        } else if (resources.game_state == GAME_WIN_LEVEL) {
-            if (resources.current_level==LEVEL_1)
+        } 
+        else if (resources.game_state == GAME_WIN_LEVEL) 
+        {
+            if (resources.current_level == LEVEL_1) 
             {
-               drawWinnLevelOne();
-            }
-            else if (resources.current_level==LEVEL_2)
+                drawWinnLevelOne();
+            } 
+            else if (resources.current_level == LEVEL_2) 
             {
                 drawWinnLevelTwo();
-            }
-            else
+            } 
+            else 
             {
                 drawWinnLevelThree();
             }
-            
-            while (resources.game_state == GAME_WIN_LEVEL) {
-                nanosleep(&ts, NULL);
-            }
-        }
-        else if (resources.game_state == GAME_WIN)
+        } 
+        else if (resources.game_state == GAME_WIN) 
         {
             drawWinn();
-            while (resources.game_state == GAME_WIN) {
-                nanosleep(&ts, NULL);
-            }
-        }
-         else if (resources.game_state == GAME_RUNNING) {
+        } 
+        else if (resources.game_state == GAME_RUNNING) 
+        {
             pthread_mutex_lock(&resources.mutex);
             resources.should_draw = 1;
             pthread_mutex_unlock(&resources.mutex);
+
+            render_background(game_running_texture); // Usar textura de game running
 
             drawShip();
             updateProjectiles();
             updateEnemies(); 
             drawProjectiles();
             drawEnemies();
-            XFlush(resources.display);
 
-            nanosleep(&ts, NULL); 
-            
+            SDL_RenderPresent(sdl_renderer);
+            nanosleep(&ts, NULL);
         }
     }
+
+    cleanup_sdl();
     return NULL;
 }
