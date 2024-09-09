@@ -88,10 +88,10 @@ void *mouseControl(void *arg)
                 for (int i = 0; i < MAX_ENEMIES; ++i)
                 {
                     if (enemies[i].active &&
-                        new_x >= enemies[i].x - 20 &&
-                        new_x <= enemies[i].x + 20 &&
-                        new_y >= enemies[i].y - 20 &&
-                        new_y <= enemies[i].y + 20)
+                        new_x >= enemies[i].x - 40 &&
+                        new_x <= enemies[i].x + 40 &&
+                        new_y >= enemies[i].y - 40 &&
+                        new_y <= enemies[i].y + 40)
                     {
                         can_move = 0;
                         resources.game_state = GAME_OVER; // Game Over si la nave choca con un alien
