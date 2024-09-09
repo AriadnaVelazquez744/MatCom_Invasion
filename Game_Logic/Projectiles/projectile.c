@@ -55,10 +55,10 @@ void checkCollisions()
             for (int j = 0; j < resources.max_enemies; ++j)
             {
                 if (enemies[j].active &&
-                    projectiles[i].x >= enemies[j].x - 10 &&
-                    projectiles[i].x <= enemies[j].x + 10 &&
-                    projectiles[i].y >= enemies[j].y - 10 &&
-                    projectiles[i].y <= enemies[j].y + 10)
+                    projectiles[i].x >= enemies[j].x - 15 &&
+                    projectiles[i].x <= enemies[j].x + 15 &&
+                    projectiles[i].y >= enemies[j].y - 15 &&
+                    projectiles[i].y <= enemies[j].y + 15)
                 {
                     enemies[j].life -= 1;
                     projectiles[i].active = 0;
