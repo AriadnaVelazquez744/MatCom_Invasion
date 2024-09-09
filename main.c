@@ -63,15 +63,15 @@ void *mouseControl(void *arg)
                 int click_x = event.xbutton.x;
                 int click_y = event.xbutton.y;
 
-                if (click_y >= resources.HEIGHT / 2 - 10 && click_y < resources.HEIGHT / 2 + 10) {
+                if (click_y >= resources.HEIGHT / 2 - 10 && click_y < resources.HEIGHT / 2 + 35) {
                     resources.game_mode = MODE_PROGRESSIVE;
                     resetGame();
                     resources.game_state = GAME_RUNNING;
-                } else if (click_y >= resources.HEIGHT / 2 + 40 && click_y < resources.HEIGHT / 2 + 60) {
+                } else if (click_y >= resources.HEIGHT / 2 + 40 && click_y < resources.HEIGHT / 2 + 85) {
                     resources.game_mode = MODE_ALTERNATE;
                     resetGame();
                     resources.game_state = GAME_RUNNING;
-                } else if (click_y >= resources.HEIGHT / 2 + 90 && click_y < resources.HEIGHT / 2 + 110) {
+                } else if (click_y >= resources.HEIGHT / 2 + 90 && click_y < resources.HEIGHT / 2 + 135) {
                     resources.game_mode = MODE_RANDOM;
                     resetGame();
                     resources.game_state = GAME_RUNNING;
