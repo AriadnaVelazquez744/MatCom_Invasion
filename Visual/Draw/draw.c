@@ -19,6 +19,7 @@ SDL_Window* sdl_window = NULL;
 SDL_Renderer* sdl_renderer = NULL;
 SDL_Texture* background_texture = NULL;
 TTF_Font* font = NULL; // Fuente para texto
+TTF_Font* font_init = NULL; // Fuente para texto de inicio
 
 SDL_Texture* game_running_texture = NULL;
 SDL_Texture* select_screen = NULL;
@@ -62,6 +63,7 @@ void init_sdl_for_background()
 
     // Cargar fuente
     font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", 32);
+    font_init = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", 80);
     
     if (!font) 
     {
@@ -243,6 +245,7 @@ void drawSelectModeScreen()
     SDL_Color textColor = {255, 182, 193, 255}; // Rosado claro (Light Pink)
     SDL_Color outlineColor = {255, 0, 0, 255};  // Rojo brillante
 
+    drawText(sdl_renderer, font_init, "MATCOM INVASION", resources.WIDTH / 2 - 375, resources.HEIGHT / 2 - 300, textColor, outlineColor);
     drawText(sdl_renderer, font, "Select Game Mode:", resources.WIDTH / 2 - 100, resources.HEIGHT / 2 - 60, textColor, outlineColor);
     drawText(sdl_renderer, font, "1. Progressive", resources.WIDTH / 2 - 80, resources.HEIGHT / 2 - 10, textColor, outlineColor);
     drawText(sdl_renderer, font, "2. Alternate", resources.WIDTH / 2 - 80, resources.HEIGHT / 2 + 40, textColor, outlineColor);
